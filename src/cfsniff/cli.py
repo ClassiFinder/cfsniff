@@ -5,10 +5,12 @@ from __future__ import annotations
 import os
 import sys
 import webbrowser
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 import click
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, MofNCompleteColumn
 
 from cfsniff import __version__
 from cfsniff.api import FileFinding, scan_text
@@ -34,11 +36,15 @@ def _scan_files(
     min_confidence: float,
     verbose: bool,
     console: Console,
+    progress: Progress | None = None,
+    task_id: int | None = None,
 ) -> list[tuple[Path, list[FileFinding]]]:
     """Scan a list of files and return (path, findings) pairs."""
     results: list[tuple[Path, list[FileFinding]]] = []
     for path in files:
-        if verbose:
+        if progress and task_id is not None:
+            progress.update(task_id, description=f"[dim]{path.name}[/dim]", advance=1)
+        elif verbose:
             console.print(f"  [dim]scanning {path}[/dim]", highlight=False)
         text = read_file_text(path)
         if text is None:
@@ -274,7 +280,19 @@ def scan(
             if file_targets:
                 files = discover_files(file_targets, max_file_size=max_file_size)
                 scanned_count += len(files)
-                file_results = _scan_files(client, files, min_confidence, verbose, console)
+                if fmt == "rich" and len(files) > 1 and not verbose:
+                    with Progress(
+                        SpinnerColumn(),
+                        TextColumn("[progress.description]{task.description}"),
+                        BarColumn(),
+                        MofNCompleteColumn(),
+                        console=console,
+                        transient=True,
+                    ) as progress:
+                        tid = progress.add_task("Scanning...", total=len(files))
+                        file_results = _scan_files(client, files, min_confidence, verbose, console, progress, tid)
+                else:
+                    file_results = _scan_files(client, files, min_confidence, verbose, console)
                 all_file_findings.extend(file_results)
 
             # Filter and output
@@ -355,22 +373,37 @@ def audit(
         with ClassiFinder(api_key=resolved_key) as client:
             all_file_findings: list[tuple[Path, list[FileFinding]]] = []
 
-            for category, path in audit_files:
-                if verbose:
-                    console.print(f"  [dim]scanning {path}[/dim]", highlight=False)
-                text = read_file_text(path)
-                if text is None:
-                    continue
-                try:
-                    findings = scan_text(client, text, min_confidence=min_confidence)
-                except AuthenticationError:
-                    raise  # Don't swallow auth errors — every file will fail
-                except ClassiFinderError as exc:
-                    if verbose:
-                        click.echo(f"  error: {path}: {exc.message}", err=True)
-                    continue
-                if findings:
-                    all_file_findings.append((path, findings))
+            use_progress = fmt == "rich" and not verbose and len(audit_files) > 0
+            progress_ctx = Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                MofNCompleteColumn(),
+                console=console,
+                transient=True,
+            ) if use_progress else None
+
+            with progress_ctx if progress_ctx else nullcontext():
+                tid = progress_ctx.add_task("Sniffing...", total=len(audit_files)) if progress_ctx else None
+
+                for category, path in audit_files:
+                    if progress_ctx and tid is not None:
+                        progress_ctx.update(tid, description=f"[dim]{path.name}[/dim]", advance=1)
+                    elif verbose:
+                        console.print(f"  [dim]scanning {path}[/dim]", highlight=False)
+                    text = read_file_text(path)
+                    if text is None:
+                        continue
+                    try:
+                        findings = scan_text(client, text, min_confidence=min_confidence)
+                    except AuthenticationError:
+                        raise  # Don't swallow auth errors — every file will fail
+                    except ClassiFinderError as exc:
+                        if verbose:
+                            click.echo(f"  error: {path}: {exc.message}", err=True)
+                        continue
+                    if findings:
+                        all_file_findings.append((path, findings))
 
             all_file_findings = _filter_severity(all_file_findings, min_severity)
             summary = _build_summary(all_file_findings, len(audit_files))

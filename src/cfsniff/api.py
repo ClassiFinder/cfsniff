@@ -38,7 +38,7 @@ def scan_text(
 
     result = client.scan(text, min_confidence=min_confidence)
 
-    return [
+    findings = [
         FileFinding(
             line=_offset_to_line(text, f.span.start),
             type=f.type,
@@ -51,3 +51,18 @@ def scan_text(
         )
         for f in result.findings
     ]
+
+    return _deduplicate(findings)
+
+
+def _deduplicate(findings: list[FileFinding]) -> list[FileFinding]:
+    """Remove duplicate findings with same type + value_preview on the same line.
+
+    Keeps the highest-confidence instance of each duplicate.
+    """
+    seen: dict[tuple[int, str, str], FileFinding] = {}
+    for f in findings:
+        key = (f.line, f.type, f.value_preview)
+        if key not in seen or f.confidence > seen[key].confidence:
+            seen[key] = f
+    return sorted(seen.values(), key=lambda f: (f.line, f.type))

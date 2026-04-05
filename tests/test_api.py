@@ -65,3 +65,31 @@ class TestScanText:
 
         findings = scan_text(mock_client, text, min_confidence=0.5)
         assert findings[0].line == 3
+
+    def test_deduplicates_same_type_and_preview_on_same_line(self) -> None:
+        text = "AKIAIOSFODNN7EXAMPLE AKIAIOSFODNN7EXAMPLE\n"
+        mock_client = MagicMock()
+        mock_result = MagicMock()
+        mock_result.findings = [
+            _make_mock_finding(span_start=0, span_end=20, confidence=0.90),
+            _make_mock_finding(span_start=21, span_end=41, confidence=0.95),
+        ]
+        mock_client.scan.return_value = mock_result
+
+        findings = scan_text(mock_client, text, min_confidence=0.5)
+        # Same line, same type, same preview — should deduplicate to one, keeping higher confidence
+        assert len(findings) == 1
+        assert findings[0].confidence == 0.95
+
+    def test_keeps_different_types_on_same_line(self) -> None:
+        text = "AKIAIOSFODNN7EXAMPLE sk_live_abc123\n"
+        mock_client = MagicMock()
+        mock_result = MagicMock()
+        mock_result.findings = [
+            _make_mock_finding(span_start=0, span_end=20, type="aws_access_key"),
+            _make_mock_finding(span_start=21, span_end=35, type="stripe_secret_key", type_name="Stripe Key", value_preview="sk_l****c123"),
+        ]
+        mock_client.scan.return_value = mock_result
+
+        findings = scan_text(mock_client, text, min_confidence=0.5)
+        assert len(findings) == 2
