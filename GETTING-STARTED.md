@@ -173,7 +173,7 @@ cfsniff audit --format plain --min-severity high || echo "secrets found!"
 
 ## What it detects
 
-cfsniff uses ClassiFinder's scanner engine, which recognizes 88 types of secrets across these categories:
+cfsniff uses ClassiFinder's scanner engine, which recognizes 101 types of secrets across these categories:
 
 - **Cloud providers** — AWS, GCP, Azure access keys and secrets
 - **Payment** — Stripe, PayPal, Square API keys; credit card numbers
