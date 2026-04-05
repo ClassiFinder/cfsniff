@@ -59,7 +59,8 @@ class TestMainCommand:
 
     def test_version_flag(self, runner: CliRunner) -> None:
         result = runner.invoke(main, ["--version"])
-        assert "0.1.0" in result.output
+        from cfsniff import __version__
+        assert __version__ in result.output
 
     def test_missing_api_key(self, runner: CliRunner, tmp_path: Path) -> None:
         f = tmp_path / "test.env"

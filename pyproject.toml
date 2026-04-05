@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cfsniff"
-version = "0.1.0"
+version = "0.1.1"
 description = "Sniff out secrets in arbitrary text using the ClassiFinder API"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 authors = [{ name = "Thomas Paras" }]
 dependencies = [
     "classifinder>=0.1.3",
