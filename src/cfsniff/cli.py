@@ -47,8 +47,10 @@ def _scan_files(
             continue
         try:
             findings = scan_text(client, text, min_confidence=min_confidence)
+        except AuthenticationError:
+            raise  # Don't swallow auth errors — every file will fail
         except ClassiFinderError as exc:
-            console.print(f"  [red]error scanning {path}: {exc.message}[/red]", err=True)
+            click.echo(f"  error scanning {path}: {exc.message}", err=True)
             continue
         if findings:
             results.append((path, findings))
@@ -358,9 +360,11 @@ def audit(
                     continue
                 try:
                     findings = scan_text(client, text, min_confidence=min_confidence)
+                except AuthenticationError:
+                    raise  # Don't swallow auth errors — every file will fail
                 except ClassiFinderError as exc:
                     if verbose:
-                        console.print(f"  [red]error: {path}: {exc.message}[/red]", err=True)
+                        click.echo(f"  error: {path}: {exc.message}", err=True)
                     continue
                 if findings:
                     all_file_findings.append((path, findings))
