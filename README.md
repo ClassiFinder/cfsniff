@@ -5,20 +5,20 @@ A good dog that sniffs out leaked secrets in files, directories, and text — po
 ## Install
 
 ```bash
-pip install cfsniff
+pipx install cfsniff
 ```
 
-Clipboard support:
+Or with pip:
 
 ```bash
-pip install "cfsniff[clipboard]"
+pip install cfsniff
 ```
 
 ## Quick Start
 
 ```bash
 # 1. Install
-pip install cfsniff
+pipx install cfsniff
 
 # 2. Set your API key (get one at https://classifinder.ai)
 export CLASSIFINDER_API_KEY=cf_live_...

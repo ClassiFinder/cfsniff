@@ -20,10 +20,12 @@ cfsniff is stateless. It doesn't log, cache, or persist anything. The API proces
 ## Install
 
 ```bash
-pip install cfsniff
+pipx install cfsniff
 ```
 
-Requires Python 3.10+.
+Or with pip: `pip install cfsniff`
+
+Requires Python 3.9+.
 
 ---
 
