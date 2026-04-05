@@ -11,6 +11,16 @@ from rich.console import Console
 from cfsniff import __version__
 from cfsniff.api import FileFinding
 
+_HOME = str(Path.home())
+
+
+def tilde_path(path: Path) -> str:
+    """Replace the home directory prefix with ~ for display."""
+    s = str(path)
+    if s.startswith(_HOME):
+        return "~" + s[len(_HOME):]
+    return s
+
 SEVERITY_COLORS = {
     "critical": "bold red",
     "high": "red",
@@ -32,7 +42,7 @@ def format_plain(file_findings: list[tuple[Path, list[FileFinding]]]) -> list[st
     lines: list[str] = []
     for path, findings in file_findings:
         for f in findings:
-            lines.append(f"{path}:{f.line}:{f.type}:{f.severity}:{f.confidence:.2f}:{f.value_preview}")
+            lines.append(f"{tilde_path(path)}:{f.line}:{f.type}:{f.severity}:{f.confidence:.2f}:{f.value_preview}")
     return lines
 
 
@@ -45,7 +55,7 @@ def format_json(
     for path, findings in file_findings:
         for f in findings:
             findings_list.append({
-                "file": str(path),
+                "file": tilde_path(path),
                 "line": f.line,
                 "type": f.type,
                 "type_name": f.type_name,
@@ -55,11 +65,13 @@ def format_json(
                 "span": {"start": f.span_start, "end": f.span_end},
             })
 
+    exit_code = 2 if summary.total_findings > 0 else 0
     output = {
         "version": __version__,
         "scanned_files": summary.scanned_files,
         "findings": findings_list,
         "summary": asdict(summary),
+        "exit_code": exit_code,
     }
     return json.dumps(output, indent=2)
 
@@ -68,24 +80,25 @@ def print_rich(
     file_findings: list[tuple[Path, list[FileFinding]]],
     summary: ScanSummary,
     console: Console | None = None,
+    quiet: bool = False,
 ) -> None:
     """Print findings with rich formatting."""
     console = console or Console()
-    console.print(f"\n[bold]cfsniff[/bold] v{__version__}\n")
 
     if not file_findings:
         console.print(f"[green]No secrets found[/green] ({summary.scanned_files} files scanned)")
         return
 
-    for path, findings in file_findings:
-        console.print(f"\n[bold]{path}[/bold]")
-        for f in findings:
-            color = SEVERITY_COLORS.get(f.severity, "")
-            console.print(
-                f"  line {f.line:<6} | {f.type_name:<22} | [{color}]{f.severity:<8}[/{color}] | {f.confidence:.2f} | {f.value_preview}"
-            )
+    if not quiet:
+        for path, findings in file_findings:
+            console.print(f"\n[bold]{tilde_path(path)}[/bold]")
+            for f in findings:
+                color = SEVERITY_COLORS.get(f.severity, "")
+                console.print(
+                    f"  line {f.line:<6} | {f.type_name:<22} | [{color}]{f.severity:<8}[/{color}] | {f.confidence:.2f} | {f.value_preview}"
+                )
+        console.print()
 
-    console.print()
     console.rule()
     sev = summary.by_severity
     console.print(

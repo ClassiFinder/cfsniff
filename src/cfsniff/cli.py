@@ -106,15 +106,17 @@ def _output_results(
     report_path: str | None,
     open_report: bool,
     console: Console,
+    quiet: bool = False,
 ) -> None:
     """Output results in the requested format and optionally generate a report."""
     if fmt == "plain":
-        for line in format_plain(file_findings):
-            click.echo(line)
+        if not quiet:
+            for line in format_plain(file_findings):
+                click.echo(line)
     elif fmt == "json":
         click.echo(format_json(file_findings, summary))
     else:
-        print_rich(file_findings, summary, console=console)
+        print_rich(file_findings, summary, console=console, quiet=quiet)
 
     if report_path:
         report_out = Path(report_path)
@@ -175,6 +177,7 @@ class _DefaultGroup(click.Group):
 @click.option("--report", default=None, type=click.Path(), help="Write HTML report to path")
 @click.option("--open", "open_report", is_flag=True, help="Open HTML report in browser")
 @click.option("--verbose", is_flag=True, help="Show files being scanned")
+@click.option("--quiet", is_flag=True, help="Only show summary, not individual findings")
 @click.version_option(__version__)
 @click.pass_context
 def main(
@@ -187,6 +190,7 @@ def main(
     report: str | None,
     open_report: bool,
     verbose: bool,
+    quiet: bool,
 ) -> None:
     """cfsniff — sniff out secrets in arbitrary text."""
     ctx.ensure_object(dict)
@@ -198,6 +202,7 @@ def main(
     ctx.obj["report"] = report
     ctx.obj["open_report"] = open_report
     ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
 
 
 @main.command(hidden=True)
@@ -218,6 +223,7 @@ def scan(
     report = obj["report"]
     open_report = obj["open_report"]
     verbose = obj["verbose"]
+    quiet = obj["quiet"]
 
     console = Console(stderr=True) if fmt != "rich" else Console()
 
@@ -298,7 +304,7 @@ def scan(
             # Filter and output
             all_file_findings = _filter_severity(all_file_findings, min_severity)
             summary = _build_summary(all_file_findings, scanned_count)
-            _output_results(all_file_findings, summary, fmt, report, open_report, console)
+            _output_results(all_file_findings, summary, fmt, report, open_report, console, quiet)
 
             # Exit code: 2 if secrets found, 0 if clean
             if summary.total_findings > 0:
@@ -347,6 +353,7 @@ def audit(
     report = report or obj.get("report")
     open_report = open_report or obj.get("open_report", False)
     verbose = verbose or obj.get("verbose", False)
+    quiet = obj.get("quiet", False)
 
     console = Console(stderr=True) if fmt != "rich" else Console()
 
@@ -407,7 +414,7 @@ def audit(
 
             all_file_findings = _filter_severity(all_file_findings, min_severity)
             summary = _build_summary(all_file_findings, len(audit_files))
-            _output_results(all_file_findings, summary, fmt, report, open_report, console)
+            _output_results(all_file_findings, summary, fmt, report, open_report, console, quiet)
 
             if summary.total_findings > 0:
                 ctx.exit(2)

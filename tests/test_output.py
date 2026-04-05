@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from cfsniff.api import FileFinding
-from cfsniff.output import format_json, format_plain, ScanSummary
+from cfsniff.output import format_json, format_plain, tilde_path, ScanSummary
 
 
 def _finding(
@@ -64,3 +64,26 @@ class TestFormatJson:
         summary = ScanSummary(scanned_files=0, total_findings=0, files_with_findings=0, by_severity={"critical": 0, "high": 0, "medium": 0, "low": 0})
         data = json.loads(format_json([], summary))
         assert data["findings"] == []
+
+    def test_exit_code_with_findings(self) -> None:
+        summary = ScanSummary(scanned_files=1, total_findings=1, files_with_findings=1, by_severity={"critical": 0, "high": 1, "medium": 0, "low": 0})
+        data = json.loads(format_json([(Path("/a"), [_finding()])], summary))
+        assert data["exit_code"] == 2
+
+    def test_exit_code_no_findings(self) -> None:
+        summary = ScanSummary(scanned_files=1, total_findings=0, files_with_findings=0, by_severity={"critical": 0, "high": 0, "medium": 0, "low": 0})
+        data = json.loads(format_json([], summary))
+        assert data["exit_code"] == 0
+
+
+class TestTildePath:
+    def test_home_path(self) -> None:
+        home = Path.home()
+        assert tilde_path(home / ".zsh_history") == "~/.zsh_history"
+
+    def test_non_home_path(self) -> None:
+        assert tilde_path(Path("/var/log/syslog")) == "/var/log/syslog"
+
+    def test_special_paths(self) -> None:
+        assert tilde_path(Path("<clipboard>")) == "<clipboard>"
+        assert tilde_path(Path("<stdin>")) == "<stdin>"

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from cfsniff import __version__
 from cfsniff.api import FileFinding
-from cfsniff.output import ScanSummary
+from cfsniff.output import ScanSummary, tilde_path
 
 _SEVERITY_COLORS = {
     "critical": "#e85454",
@@ -29,7 +29,7 @@ def generate_html_report(
     for path, findings in file_findings:
         for i, f in enumerate(findings):
             color = _SEVERITY_COLORS.get(f.severity, "#9ca3af")
-            file_cell = html.escape(str(path)) if i == 0 else ""
+            file_cell = html.escape(tilde_path(path)) if i == 0 else ""
             rows += f"""<tr>
                 <td class="file">{file_cell}</td>
                 <td>{f.line}</td>
