@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import sys
 import webbrowser
-from contextlib import contextmanager, nullcontext
+from contextlib import nullcontext
 from pathlib import Path
 
 import click

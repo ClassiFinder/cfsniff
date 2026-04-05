@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from cfsniff.api import FileFinding, scan_text
+from cfsniff.api import scan_text
 
 
 def _make_mock_finding(

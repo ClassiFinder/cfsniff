@@ -31,5 +31,8 @@ cfsniff = "cfsniff.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/cfsniff"]
 
+[tool.mypy]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
