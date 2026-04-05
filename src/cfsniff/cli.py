@@ -111,11 +111,14 @@ def _output_results(
         print_rich(file_findings, summary, console=console)
 
     if report_path:
+        report_out = Path(report_path)
+        if report_out.is_dir():
+            report_out = report_out / "report.html"
         html = generate_html_report(file_findings, summary)
-        Path(report_path).write_text(html)
-        console.print(f"\n[green]Report written to {report_path}[/green]")
+        report_out.write_text(html)
+        console.print(f"\n[green]Report written to {report_out}[/green]")
         if open_report:
-            webbrowser.open(f"file://{Path(report_path).resolve()}")
+            webbrowser.open(f"file://{report_out.resolve()}")
 
 
 class _DefaultGroup(click.Group):
