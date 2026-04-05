@@ -1,3 +1,3 @@
 """cfsniff — sniff out secrets in arbitrary text."""
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
