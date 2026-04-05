@@ -5,4 +5,7 @@ dist/
 build/
 .pytest_cache/
 *.html
+.env
+.env.*
+.gstack/
 CLAUDE.md
