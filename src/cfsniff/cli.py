@@ -10,7 +10,7 @@ from pathlib import Path
 
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, MofNCompleteColumn
+from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn, BarColumn, MofNCompleteColumn
 
 from cfsniff import __version__
 from cfsniff.api import FileFinding, scan_text
@@ -37,7 +37,7 @@ def _scan_files(
     verbose: bool,
     console: Console,
     progress: Progress | None = None,
-    task_id: int | None = None,
+    task_id: TaskID | None = None,
 ) -> list[tuple[Path, list[FileFinding]]]:
     """Scan a list of files and return (path, findings) pairs."""
     results: list[tuple[Path, list[FileFinding]]] = []
