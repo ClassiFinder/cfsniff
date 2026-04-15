@@ -74,6 +74,26 @@ class TestMainCommand:
         assert result.exit_code == 1
 
 
+class TestWorkers:
+    def test_workers_flag_scans_all_files(
+        self, runner: CliRunner, mock_client: MagicMock, tmp_path: Path
+    ) -> None:
+        """--workers N must still scan every file exactly once."""
+        for i in range(6):
+            (tmp_path / f"f{i}.env").write_text(f"VALUE_{i}=safe\n")
+
+        result = runner.invoke(main, [
+            "--api-key", "ss_test_key123456789012345678901234567890123",
+            "--workers", "4",
+            str(tmp_path),
+        ])
+
+        assert result.exit_code == 0, result.output
+        scanned_texts = {call.args[0] for call in mock_client.scan.call_args_list}
+        for i in range(6):
+            assert f"VALUE_{i}=safe\n" in scanned_texts
+
+
 class TestAuditCommand:
     def test_audit_runs(self, runner: CliRunner, mock_client: MagicMock) -> None:
         result = runner.invoke(main, ["audit", "--api-key", "ss_test_key123456789012345678901234567890123"])

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 import webbrowser
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import nullcontext
 from pathlib import Path
 
@@ -30,36 +31,71 @@ def _resolve_api_key(api_key: str | None) -> str | None:
     return api_key or os.environ.get("CLASSIFINDER_API_KEY")
 
 
+def _scan_one(
+    client: ClassiFinder,
+    path: Path,
+    min_confidence: float,
+) -> tuple[Path, list[FileFinding] | None, Exception | None]:
+    """Scan a single file. Returns (path, findings_or_None, error_or_None)."""
+    text = read_file_text(path)
+    if text is None:
+        return (path, None, None)
+    try:
+        findings = scan_text(client, text, min_confidence=min_confidence)
+    except AuthenticationError:
+        raise
+    except ClassiFinderError as exc:
+        return (path, None, exc)
+    return (path, findings, None)
+
+
 def _scan_files(
     client: ClassiFinder,
     files: list[Path],
     min_confidence: float,
     verbose: bool,
     console: Console,
+    workers: int = 1,
     progress: Progress | None = None,
     task_id: TaskID | None = None,
 ) -> list[tuple[Path, list[FileFinding]]]:
-    """Scan a list of files and return (path, findings) pairs."""
+    """Scan a list of files and return (path, findings) pairs.
+
+    When workers > 1, file scans run concurrently via a thread pool. The
+    underlying API call is I/O-bound, so threads suffice (no GIL contention).
+    """
     results: list[tuple[Path, list[FileFinding]]] = []
-    for path in files:
+
+    def _record(path: Path, findings: list[FileFinding] | None, err: Exception | None) -> None:
         if progress and task_id is not None:
             progress.update(task_id, description=f"[dim]{path.name}[/dim]", advance=1)
         elif verbose:
             console.print(f"  [dim]scanning {path}[/dim]", highlight=False)
-        text = read_file_text(path)
-        if text is None:
+        if err is not None:
+            click.echo(f"  error scanning {path}: {err.message}", err=True)  # type: ignore[attr-defined]
+            return
+        if findings is None:
             if verbose:
                 console.print(f"  [yellow]skipped (unreadable): {path}[/yellow]")
-            continue
-        try:
-            findings = scan_text(client, text, min_confidence=min_confidence)
-        except AuthenticationError:
-            raise  # Don't swallow auth errors — every file will fail
-        except ClassiFinderError as exc:
-            click.echo(f"  error scanning {path}: {exc.message}", err=True)
-            continue
+            return
         if findings:
             results.append((path, findings))
+
+    if workers <= 1 or len(files) <= 1:
+        for path in files:
+            _, findings, err = _scan_one(client, path, min_confidence)
+            _record(path, findings, err)
+        return results
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        future_to_path = {
+            pool.submit(_scan_one, client, path, min_confidence): path for path in files
+        }
+        for future in as_completed(future_to_path):
+            path, findings, err = future.result()
+            _record(path, findings, err)
+
+    results.sort(key=lambda pair: pair[0])
     return results
 
 
@@ -135,7 +171,7 @@ class _DefaultGroup(click.Group):
     # Group-level options that consume the next token as their value
     _OPTIONS_WITH_VALUE = frozenset({
         "--api-key", "--format", "--min-confidence",
-        "--min-severity", "--max-file-size", "--report",
+        "--min-severity", "--max-file-size", "--report", "--workers",
     })
 
     def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
@@ -176,6 +212,7 @@ class _DefaultGroup(click.Group):
 @click.option("--max-file-size", type=int, default=_DEFAULT_MAX_FILE_SIZE, help="Max file size in bytes")
 @click.option("--report", default=None, type=click.Path(), help="Write HTML report to path")
 @click.option("--open", "open_report", is_flag=True, help="Open HTML report in browser")
+@click.option("--workers", type=int, default=8, show_default=True, help="Parallel scan workers (1 = sequential)")
 @click.option("--verbose", is_flag=True, help="Show files being scanned")
 @click.option("--quiet", is_flag=True, help="Only show summary, not individual findings")
 @click.version_option(__version__)
@@ -189,6 +226,7 @@ def main(
     max_file_size: int,
     report: str | None,
     open_report: bool,
+    workers: int,
     verbose: bool,
     quiet: bool,
 ) -> None:
@@ -201,6 +239,7 @@ def main(
     ctx.obj["max_file_size"] = max_file_size
     ctx.obj["report"] = report
     ctx.obj["open_report"] = open_report
+    ctx.obj["workers"] = max(1, workers)
     ctx.obj["verbose"] = verbose
     ctx.obj["quiet"] = quiet
 
@@ -222,6 +261,7 @@ def scan(
     max_file_size = obj["max_file_size"]
     report = obj["report"]
     open_report = obj["open_report"]
+    workers = obj["workers"]
     verbose = obj["verbose"]
     quiet = obj["quiet"]
 
@@ -296,9 +336,9 @@ def scan(
                         transient=True,
                     ) as progress:
                         tid = progress.add_task("Scanning...", total=len(files))
-                        file_results = _scan_files(client, files, min_confidence, verbose, console, progress, tid)
+                        file_results = _scan_files(client, files, min_confidence, verbose, console, workers=workers, progress=progress, task_id=tid)
                 else:
-                    file_results = _scan_files(client, files, min_confidence, verbose, console)
+                    file_results = _scan_files(client, files, min_confidence, verbose, console, workers=workers)
                 all_file_findings.extend(file_results)
 
             # Filter and output
@@ -327,6 +367,7 @@ def scan(
 @click.option("--max-file-size", type=int, default=None)
 @click.option("--report", default=None, type=click.Path())
 @click.option("--open", "open_report", is_flag=True, default=False)
+@click.option("--workers", type=int, default=None, help="Parallel scan workers")
 @click.option("--verbose", is_flag=True, default=False)
 @click.pass_context
 def audit(
@@ -339,6 +380,7 @@ def audit(
     max_file_size: int | None,
     report: str | None,
     open_report: bool,
+    workers: int | None,
     verbose: bool,
 ) -> None:
     """Audit your machine for secrets in non-code locations."""
@@ -352,6 +394,7 @@ def audit(
     max_file_size = max_file_size if max_file_size is not None else obj.get("max_file_size", _DEFAULT_MAX_FILE_SIZE)
     report = report or obj.get("report")
     open_report = open_report or obj.get("open_report", False)
+    workers = max(1, workers if workers is not None else obj.get("workers", 8))
     verbose = verbose or obj.get("verbose", False)
     quiet = obj.get("quiet", False)
 
@@ -393,24 +436,28 @@ def audit(
             with progress_ctx if progress_ctx else nullcontext():
                 tid = progress_ctx.add_task("Sniffing...", total=len(audit_files)) if progress_ctx else None
 
-                for category, path in audit_files:
+                def _on_done(path: Path, findings: list[FileFinding] | None, err: Exception | None) -> None:
                     if progress_ctx and tid is not None:
                         progress_ctx.update(tid, description=f"[dim]{path.name}[/dim]", advance=1)
                     elif verbose:
                         console.print(f"  [dim]scanning {path}[/dim]", highlight=False)
-                    text = read_file_text(path)
-                    if text is None:
-                        continue
-                    try:
-                        findings = scan_text(client, text, min_confidence=min_confidence)
-                    except AuthenticationError:
-                        raise  # Don't swallow auth errors — every file will fail
-                    except ClassiFinderError as exc:
-                        if verbose:
-                            click.echo(f"  error: {path}: {exc.message}", err=True)
-                        continue
+                    if err is not None and verbose:
+                        click.echo(f"  error: {path}: {err.message}", err=True)  # type: ignore[attr-defined]
                     if findings:
                         all_file_findings.append((path, findings))
+
+                paths = [path for _category, path in audit_files]
+                if workers <= 1 or len(paths) <= 1:
+                    for path in paths:
+                        _, findings, err = _scan_one(client, path, min_confidence)
+                        _on_done(path, findings, err)
+                else:
+                    with ThreadPoolExecutor(max_workers=workers) as pool:
+                        futures = {pool.submit(_scan_one, client, p, min_confidence): p for p in paths}
+                        for fut in as_completed(futures):
+                            path, findings, err = fut.result()
+                            _on_done(path, findings, err)
+                    all_file_findings.sort(key=lambda pair: pair[0])
 
             all_file_findings = _filter_severity(all_file_findings, min_severity)
             summary = _build_summary(all_file_findings, len(audit_files))
