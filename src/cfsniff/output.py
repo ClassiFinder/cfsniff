@@ -37,6 +37,27 @@ class ScanSummary:
     by_severity: dict[str, int]
 
 
+@dataclass
+class TimingRecord:
+    """MVP timing instrumentation per the speed-enhancement plan.
+
+    Required aggregates only. Sampled per-file records, slowest-N, schema
+    versioning, and DNS/TLS breakdowns are deferred until step 2 of the
+    Recommended sequence justifies them.
+    """
+
+    cfsniff_version: str
+    sdk_version: str
+    base_url: str
+    workers: int
+    wall_time_seconds: float
+    file_count: int
+    p50_per_file_ms: float
+    p95_per_file_ms: float
+    rate_limited_files: int
+    retries_exhausted: list[str]
+
+
 def format_plain(file_findings: list[tuple[Path, list[FileFinding]]]) -> list[str]:
     """Format findings as colon-delimited lines for piping."""
     lines: list[str] = []
@@ -49,8 +70,9 @@ def format_plain(file_findings: list[tuple[Path, list[FileFinding]]]) -> list[st
 def format_json(
     file_findings: list[tuple[Path, list[FileFinding]]],
     summary: ScanSummary,
+    timing: TimingRecord | None = None,
 ) -> str:
-    """Format findings as JSON."""
+    """Format findings as JSON. Optionally embeds a `timing` object."""
     findings_list = []
     for path, findings in file_findings:
         for f in findings:
@@ -66,14 +88,33 @@ def format_json(
             })
 
     exit_code = 2 if summary.total_findings > 0 else 0
-    output = {
+    output: dict = {
         "version": __version__,
         "scanned_files": summary.scanned_files,
         "findings": findings_list,
         "summary": asdict(summary),
         "exit_code": exit_code,
     }
+    if timing is not None:
+        output["timing"] = asdict(timing)
     return json.dumps(output, indent=2)
+
+
+def format_timing_stderr(timing: TimingRecord) -> list[str]:
+    """Render a timing summary as plain-text lines (one per line) for stderr."""
+    return [
+        "",
+        "── timing ──────────────────────────────",
+        f"  wall time:           {timing.wall_time_seconds:.2f}s",
+        f"  files:               {timing.file_count}",
+        f"  p50 per file:        {timing.p50_per_file_ms:.0f}ms",
+        f"  p95 per file:        {timing.p95_per_file_ms:.0f}ms",
+        f"  rate-limited files:  {timing.rate_limited_files}",
+        f"  cfsniff/sdk:         {timing.cfsniff_version} / {timing.sdk_version}",
+        f"  workers:             {timing.workers}",
+        f"  base url:            {timing.base_url}",
+        "────────────────────────────────────────",
+    ]
 
 
 def print_rich(

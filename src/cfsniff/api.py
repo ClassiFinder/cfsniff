@@ -33,7 +33,6 @@ def scan_text(
 ) -> list[FileFinding]:
     """Scan text via the ClassiFinder API and return findings with line numbers."""
     if not text:
-        result = client.scan(text, min_confidence=min_confidence)
         return []
 
     result = client.scan(text, min_confidence=min_confidence)
