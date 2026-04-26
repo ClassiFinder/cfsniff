@@ -38,16 +38,21 @@ Any extra fields the implementation produces (e.g., `errors_by_file`, slowest-N 
 
 ## How to produce a baseline
 
-Once the `--timing` flag lands:
+Step-by-step procedure with exact commands, decision logic, and what to commit:
 
-```bash
-cfsniff --format json --timing audit > perf-result.json
-# extract just the timing object, or commit the full output if small
-```
+**See [`RUNBOOK.md`](./RUNBOOK.md).**
 
-Run against the canonical fixture corpus committed at `cfsniff/tests/fixtures/perf/` (separate from this directory). All baselines must use the same corpus and the same API base URL to be comparable. Document any deviations in the filename or in a sibling `.md` note.
+Quick summary: run `python tests/fixtures/perf/generate.py`, then loop
+`cfsniff --timing --format json --workers $w tests/fixtures/perf/data/`
+over `w in {1, 8, 16, 32}`, then apply the decision gate from the runbook
+to commit one canonical baseline JSON here.
+
+All baselines must use the same corpus and the same API base URL to be
+comparable. Document any deviations in the filename or in a sibling
+`.md` note.
 
 ## See also
 
 - Plan: `classifinder-knowledge/2026-04-24-cfsniff-speed-enhancement.md`
+- Runbook: `./RUNBOOK.md`
 - Fixture corpus: `cfsniff/tests/fixtures/perf/`
