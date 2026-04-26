@@ -53,6 +53,12 @@ class TestScanText:
         findings = scan_text(mock_client, "", min_confidence=0.5)
         assert findings == []
 
+    def test_empty_text_does_not_call_api(self) -> None:
+        """Regression: empty text must early-return without an API round-trip."""
+        mock_client = MagicMock()
+        scan_text(mock_client, "", min_confidence=0.5)
+        mock_client.scan.assert_not_called()
+
     def test_line_number_calculation(self) -> None:
         # "aaa\nbbb\nccc\n" — span in 3rd line starts at offset 8
         text = "aaa\nbbb\nccc\n"
