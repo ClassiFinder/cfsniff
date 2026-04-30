@@ -31,6 +31,15 @@ cfsniff = "cfsniff.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/cfsniff"]
 
+[tool.hatch.build.targets.sdist]
+# Default is "everything tracked in git". Trim the fat that PyPI users don't need.
+exclude = [
+    ".github",
+    "docs",
+    "uv.lock",
+    "tests/fixtures/perf/data",
+]
+
 [tool.mypy]
 ignore_missing_imports = true
 
