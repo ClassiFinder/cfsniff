@@ -8,13 +8,8 @@ catch. Coverage here is heavier than typical unit-test density on purpose.
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import json
-import os
 import sys
-import time
-from pathlib import Path
 
 import pytest
 

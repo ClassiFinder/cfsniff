@@ -1,0 +1,414 @@
+{
+  "kind": "cfsniff-prefilter-classification",
+  "cfsniff_version": "0.1.4",
+  "timestamp": "2026-05-02T22:21:32.860826+00:00",
+  "corpus": "tests/fixtures/perf/data",
+  "gates": {
+    "min_bytes": 65536,
+    "max_prefilter_bytes": 4194304,
+    "max_entropy_len": 20,
+    "redos_timeout_seconds": 0.5,
+    "engine_min_confidence": 0.0
+  },
+  "totals": {
+    "files_total": 42,
+    "unreadable": 0,
+    "would_skip": 20,
+    "would_send": 22,
+    "reject_size_low": 19,
+    "reject_size_high": 0,
+    "reject_entropy": 0,
+    "reject_engine_candidate": 0,
+    "reject_engine_timeout": 3,
+    "seeded_skipped_count": 0,
+    "skip_rate_pct": 47.6,
+    "prefilter_total_ms": 3281.24,
+    "p50_prefilter_ms": 68.04,
+    "p95_prefilter_ms": 577.103
+  },
+  "per_file": [
+    {
+      "path": "cloud/aws_credentials",
+      "size_bytes": 268,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.005,
+      "is_seeded": false
+    },
+    {
+      "path": "cloud/kube_config",
+      "size_bytes": 1398,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.002,
+      "is_seeded": false
+    },
+    {
+      "path": "env/.env",
+      "size_bytes": 502,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.002,
+      "is_seeded": false
+    },
+    {
+      "path": "env/.env.development",
+      "size_bytes": 509,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": false
+    },
+    {
+      "path": "env/.env.example",
+      "size_bytes": 501,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": false
+    },
+    {
+      "path": "env/.env.local",
+      "size_bytes": 469,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_00.log",
+      "size_bytes": 117523,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 82.121,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_01.log",
+      "size_bytes": 117448,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 67.044,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_02.log",
+      "size_bytes": 117563,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 66.973,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_03.log",
+      "size_bytes": 117559,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 69.429,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_04.log",
+      "size_bytes": 117469,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 69.118,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_05.log",
+      "size_bytes": 117621,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 69.254,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_06.log",
+      "size_bytes": 117460,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 68.04,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_07.log",
+      "size_bytes": 117528,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 71.766,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_08.log",
+      "size_bytes": 117419,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 73.933,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_09.log",
+      "size_bytes": 117808,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 76.359,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_10.log",
+      "size_bytes": 117670,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 75.761,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_11.log",
+      "size_bytes": 117762,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 71.049,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_12.log",
+      "size_bytes": 117806,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 74.493,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_13.log",
+      "size_bytes": 117742,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 71.315,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_14.log",
+      "size_bytes": 117771,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 70.692,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_15.log",
+      "size_bytes": 117952,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 74.646,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_16.log",
+      "size_bytes": 117472,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 73.927,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_17.log",
+      "size_bytes": 117469,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 71.384,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_18.log",
+      "size_bytes": 117426,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 71.911,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/app_19.log",
+      "size_bytes": 117626,
+      "would_skip": true,
+      "outcome": "would_skip",
+      "reason_detail": null,
+      "prefilter_ms": 69.941,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/big_00.log",
+      "size_bytes": 1176406,
+      "would_skip": false,
+      "outcome": "reject_engine_timeout",
+      "reason_detail": null,
+      "prefilter_ms": 577.103,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/big_01.log",
+      "size_bytes": 1176800,
+      "would_skip": false,
+      "outcome": "reject_engine_timeout",
+      "reason_detail": null,
+      "prefilter_ms": 635.103,
+      "is_seeded": false
+    },
+    {
+      "path": "logs/big_02.log",
+      "size_bytes": 1176494,
+      "would_skip": false,
+      "outcome": "reject_engine_timeout",
+      "reason_detail": null,
+      "prefilter_ms": 629.853,
+      "is_seeded": false
+    },
+    {
+      "path": "packages/.npmrc",
+      "size_bytes": 73,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.004,
+      "is_seeded": false
+    },
+    {
+      "path": "packages/.pypirc",
+      "size_bytes": 101,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.002,
+      "is_seeded": false
+    },
+    {
+      "path": "seeded/.bash_history_seeded",
+      "size_bytes": 154,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": true
+    },
+    {
+      "path": "seeded/client.py",
+      "size_bytes": 142,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": true
+    },
+    {
+      "path": "seeded/leaked.env",
+      "size_bytes": 182,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": true
+    },
+    {
+      "path": "seeded/notes.md",
+      "size_bytes": 280,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": true
+    },
+    {
+      "path": "seeded/service.json",
+      "size_bytes": 200,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": true
+    },
+    {
+      "path": "shell_config/.bashrc",
+      "size_bytes": 695,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": false
+    },
+    {
+      "path": "shell_config/.profile",
+      "size_bytes": 603,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": false
+    },
+    {
+      "path": "shell_config/.zshrc",
+      "size_bytes": 649,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": false
+    },
+    {
+      "path": "shell_history/.bash_history",
+      "size_bytes": 35179,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": false
+    },
+    {
+      "path": "shell_history/.zsh_history",
+      "size_bytes": 34875,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": false
+    },
+    {
+      "path": "ssh/config",
+      "size_bytes": 1281,
+      "would_skip": false,
+      "outcome": "reject_size_low",
+      "reason_detail": null,
+      "prefilter_ms": 0.001,
+      "is_seeded": false
+    }
+  ],
+  "safety_invariant": {
+    "rule": "no seeded file may be skipped",
+    "seeded_skipped_count": 0,
+    "pass": true
+  }
+}

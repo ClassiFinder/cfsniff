@@ -67,23 +67,34 @@ def _scan_one(
     client: ClassiFinder,
     path: Path,
     min_confidence: float,
-) -> tuple[Path, list[FileFinding] | None, Exception | None, float]:
-    """Scan a single file. Returns (path, findings_or_None, error_or_None, elapsed_seconds).
+    prefilter_enabled: bool = False,
+) -> tuple[Path, list[FileFinding] | None, Exception | None, float, bool]:
+    """Scan a single file. Returns (path, findings_or_None, error_or_None, elapsed_seconds, was_skipped).
 
     elapsed_seconds is wall-time around the scan_text() call only — does not
     include file read. Returned as 0.0 when the file is unreadable.
+
+    When prefilter_enabled is True, run the local pre-filter before the API
+    call. If it returns True, no API call is made and was_skipped is True
+    (findings = []).
     """
     text = read_file_text(path)
     if text is None:
-        return (path, None, None, 0.0)
+        return (path, None, None, 0.0, False)
+    if prefilter_enabled:
+        from cfsniff.prefilter import should_skip_api
+
+        prefilter_start = time.perf_counter()
+        if should_skip_api(text):
+            return (path, [], None, time.perf_counter() - prefilter_start, True)
     start = time.perf_counter()
     try:
         findings = scan_text(client, text, min_confidence=min_confidence)
     except AuthenticationError:
         raise
     except ClassiFinderError as exc:
-        return (path, None, exc, time.perf_counter() - start)
-    return (path, findings, None, time.perf_counter() - start)
+        return (path, None, exc, time.perf_counter() - start, False)
+    return (path, findings, None, time.perf_counter() - start, False)
 
 
 def _scan_files(
@@ -95,31 +106,36 @@ def _scan_files(
     workers: int = 1,
     progress: Progress | None = None,
     task_id: TaskID | None = None,
-) -> tuple[list[tuple[Path, list[FileFinding]]], list[tuple[Path, float, bool]]]:
-    """Scan a list of files. Returns (file_findings, per_file_timings).
+    prefilter_enabled: bool = False,
+) -> tuple[list[tuple[Path, list[FileFinding]]], list[tuple[Path, float, bool]], int]:
+    """Scan a list of files. Returns (file_findings, per_file_timings, prefiltered_skips).
 
-    per_file_timings is list[(path, elapsed_seconds, was_rate_limited)]. Always
-    populated; callers that don't need timing can ignore the second element.
-    Files that were unreadable are excluded from per_file_timings since the
-    API was never called.
+    per_file_timings is list[(path, elapsed_seconds, was_rate_limited)]. Files
+    skipped by the pre-filter still produce a timing entry (useful for the
+    speed report) but never count as rate-limited. Files that were unreadable
+    are excluded from per_file_timings since the API was never called.
 
     When workers > 1, file scans run concurrently via a thread pool. The
     underlying API call is I/O-bound, so threads suffice (no GIL contention).
     """
     results: list[tuple[Path, list[FileFinding]]] = []
     timings: list[tuple[Path, float, bool]] = []
+    skipped = 0
 
     def _record(
         path: Path,
         findings: list[FileFinding] | None,
         err: Exception | None,
         elapsed: float,
+        was_skipped: bool,
     ) -> None:
+        nonlocal skipped
         if progress and task_id is not None:
             progress.update(task_id, description=f"[dim]{path.name}[/dim]", advance=1)
         elif verbose:
             console.print(f"  [dim]scanning {path}[/dim]", highlight=False)
-        # Only record timing for files where the API was actually called.
+        if was_skipped:
+            skipped += 1
         if findings is not None or err is not None:
             timings.append((path, elapsed, isinstance(err, RateLimitError)))
         if err is not None:
@@ -134,20 +150,25 @@ def _scan_files(
 
     if workers <= 1 or len(files) <= 1:
         for path in files:
-            _, findings, err, elapsed = _scan_one(client, path, min_confidence)
-            _record(path, findings, err, elapsed)
-        return results, timings
+            _, findings, err, elapsed, was_skipped = _scan_one(
+                client, path, min_confidence, prefilter_enabled=prefilter_enabled
+            )
+            _record(path, findings, err, elapsed, was_skipped)
+        return results, timings, skipped
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         future_to_path = {
-            pool.submit(_scan_one, client, path, min_confidence): path for path in files
+            pool.submit(
+                _scan_one, client, path, min_confidence, prefilter_enabled
+            ): path
+            for path in files
         }
         for future in as_completed(future_to_path):
-            path, findings, err, elapsed = future.result()
-            _record(path, findings, err, elapsed)
+            path, findings, err, elapsed, was_skipped = future.result()
+            _record(path, findings, err, elapsed, was_skipped)
 
     results.sort(key=lambda pair: pair[0])
-    return results, timings
+    return results, timings, skipped
 
 
 def _build_timing_record(
@@ -193,6 +214,7 @@ def _filter_severity(
 def _build_summary(
     file_findings: list[tuple[Path, list[FileFinding]]],
     scanned_files: int,
+    prefiltered_skips: int = 0,
 ) -> ScanSummary:
     """Build a summary from results."""
     by_severity: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0}
@@ -206,6 +228,7 @@ def _build_summary(
         total_findings=total,
         files_with_findings=len(file_findings),
         by_severity=by_severity,
+        prefiltered_skips=prefiltered_skips,
     )
 
 
@@ -445,9 +468,9 @@ def scan(
                         transient=True,
                     ) as progress:
                         tid = progress.add_task("Scanning...", total=len(files))
-                        file_results, file_timings = _scan_files(client, files, min_confidence, verbose, console, workers=workers, progress=progress, task_id=tid)
+                        file_results, file_timings, _ = _scan_files(client, files, min_confidence, verbose, console, workers=workers, progress=progress, task_id=tid)
                 else:
-                    file_results, file_timings = _scan_files(client, files, min_confidence, verbose, console, workers=workers)
+                    file_results, file_timings, _ = _scan_files(client, files, min_confidence, verbose, console, workers=workers)
                 all_file_findings.extend(file_results)
                 per_file_timings.extend(file_timings)
 
@@ -492,6 +515,18 @@ def scan(
 @click.option("--open", "open_report", is_flag=True, default=False)
 @click.option("--workers", type=int, default=None, help="Parallel scan workers")
 @click.option("--verbose", is_flag=True, default=False)
+@click.option(
+    "--local-prefilter",
+    is_flag=True,
+    default=False,
+    help="Skip the API for files the local engine confirms are clean (size + entropy + zero-candidate gate).",
+)
+@click.option(
+    "--no-version-cache",
+    is_flag=True,
+    default=False,
+    help="Bypass the on-disk types cache and re-fetch /v1/types this run (only meaningful with --local-prefilter).",
+)
 @click.pass_context
 def audit(
     ctx: click.Context,
@@ -505,6 +540,8 @@ def audit(
     open_report: bool,
     workers: int | None,
     verbose: bool,
+    local_prefilter: bool,
+    no_version_cache: bool,
 ) -> None:
     """Audit your machine for secrets in non-code locations."""
     obj = ctx.obj or {}
@@ -548,6 +585,39 @@ def audit(
         with ClassiFinder(api_key=resolved_key) as client:
             all_file_findings: list[tuple[Path, list[FileFinding]]] = []
             per_file_timings: list[tuple[Path, float, bool]] = []
+            prefiltered_skips = 0
+
+            # Version-check gate. Pre-filter is only safe when local engine
+            # patterns are a superset of server patterns; otherwise a stale
+            # local install would silently miss real secrets.
+            prefilter_enabled = False
+            if local_prefilter:
+                from cfsniff.version_check import (
+                    compare_pattern_sets,
+                    get_or_fetch_server_types,
+                    local_pattern_ids,
+                )
+
+                base_url = getattr(client, "_base_url", _DEFAULT_BASE_URL)
+                server_types = get_or_fetch_server_types(
+                    client,
+                    api_base_url=base_url,
+                    api_key=resolved_key,
+                    use_cache=not no_version_cache,
+                )
+                if server_types is None:
+                    click.echo(
+                        "warning: could not verify server pattern set; "
+                        "--local-prefilter disabled for this run",
+                        err=True,
+                    )
+                else:
+                    decision = compare_pattern_sets(server_types, local_pattern_ids())
+                    prefilter_enabled = decision.enabled
+                    if not decision.enabled:
+                        click.echo(f"warning: {decision.reason}", err=True)
+                    elif verbose:
+                        click.echo(f"[prefilter] {decision.reason}", err=True)
 
             use_progress = fmt == "rich" and not verbose and len(audit_files) > 0
             progress_ctx = Progress(
@@ -567,13 +637,17 @@ def audit(
                     findings: list[FileFinding] | None,
                     err: Exception | None,
                     elapsed: float,
+                    was_skipped: bool,
                 ) -> None:
+                    nonlocal prefiltered_skips
                     if progress_ctx and tid is not None:
                         progress_ctx.update(tid, description=f"[dim]{path.name}[/dim]", advance=1)
                     elif verbose:
                         console.print(f"  [dim]scanning {path}[/dim]", highlight=False)
                     if err is not None and verbose:
                         click.echo(f"  error: {path}: {err.message}", err=True)  # type: ignore[attr-defined]
+                    if was_skipped:
+                        prefiltered_skips += 1
                     # Only record timing for files where the API was called.
                     if findings is not None or err is not None:
                         per_file_timings.append((path, elapsed, isinstance(err, RateLimitError)))
@@ -583,14 +657,21 @@ def audit(
                 paths = [path for _category, path in audit_files]
                 if workers <= 1 or len(paths) <= 1:
                     for path in paths:
-                        _, findings, err, elapsed = _scan_one(client, path, min_confidence)
-                        _on_done(path, findings, err, elapsed)
+                        _, findings, err, elapsed, was_skipped = _scan_one(
+                            client, path, min_confidence, prefilter_enabled=prefilter_enabled
+                        )
+                        _on_done(path, findings, err, elapsed, was_skipped)
                 else:
                     with ThreadPoolExecutor(max_workers=workers) as pool:
-                        futures = {pool.submit(_scan_one, client, p, min_confidence): p for p in paths}
+                        futures = {
+                            pool.submit(
+                                _scan_one, client, p, min_confidence, prefilter_enabled
+                            ): p
+                            for p in paths
+                        }
                         for fut in as_completed(futures):
-                            path, findings, err, elapsed = fut.result()
-                            _on_done(path, findings, err, elapsed)
+                            path, findings, err, elapsed, was_skipped = fut.result()
+                            _on_done(path, findings, err, elapsed, was_skipped)
                     all_file_findings.sort(key=lambda pair: pair[0])
 
             wall_time = time.perf_counter() - wall_start
@@ -605,8 +686,17 @@ def audit(
                 )
 
             all_file_findings = _filter_severity(all_file_findings, min_severity)
-            summary = _build_summary(all_file_findings, len(audit_files))
+            summary = _build_summary(
+                all_file_findings, len(audit_files), prefiltered_skips=prefiltered_skips
+            )
             _output_results(all_file_findings, summary, fmt, report, open_report, console, quiet, timing=timing_record)
+
+            if prefiltered_skips > 0 and fmt != "json":
+                click.echo(
+                    f"[prefilter] skipped {prefiltered_skips} file(s) "
+                    f"({len(audit_files)} scanned total) — local engine confirmed clean",
+                    err=True,
+                )
 
             if summary.total_findings > 0:
                 ctx.exit(2)

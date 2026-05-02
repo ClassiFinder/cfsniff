@@ -30,7 +30,6 @@ import hmac
 import json
 import re
 import sys
-import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path

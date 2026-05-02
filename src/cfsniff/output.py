@@ -35,6 +35,7 @@ class ScanSummary:
     total_findings: int
     files_with_findings: int
     by_severity: dict[str, int]
+    prefiltered_skips: int = 0
 
 
 @dataclass
