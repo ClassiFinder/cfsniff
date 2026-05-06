@@ -1,0 +1,108 @@
+{
+  "version": "0.1.4",
+  "scanned_files": 39,
+  "findings": [
+    {
+      "file": "tests/fixtures/perf/data/env/.env",
+      "line": 2,
+      "type": "postgres_connection_string",
+      "type_name": "PostgreSQL Connection String (with password)",
+      "severity": "high",
+      "confidence": 0.99,
+      "value_preview": "post****2/db",
+      "span": {
+        "start": 50,
+        "end": 95
+      }
+    },
+    {
+      "file": "tests/fixtures/perf/data/env/.env.development",
+      "line": 2,
+      "type": "postgres_connection_string",
+      "type_name": "PostgreSQL Connection String (with password)",
+      "severity": "high",
+      "confidence": 0.99,
+      "value_preview": "post****2/db",
+      "span": {
+        "start": 50,
+        "end": 95
+      }
+    },
+    {
+      "file": "tests/fixtures/perf/data/env/.env.example",
+      "line": 2,
+      "type": "postgres_connection_string",
+      "type_name": "PostgreSQL Connection String (with password)",
+      "severity": "high",
+      "confidence": 0.99,
+      "value_preview": "post****2/db",
+      "span": {
+        "start": 50,
+        "end": 95
+      }
+    },
+    {
+      "file": "tests/fixtures/perf/data/env/.env.local",
+      "line": 2,
+      "type": "postgres_connection_string",
+      "type_name": "PostgreSQL Connection String (with password)",
+      "severity": "high",
+      "confidence": 0.99,
+      "value_preview": "post****2/db",
+      "span": {
+        "start": 50,
+        "end": 95
+      }
+    },
+    {
+      "file": "tests/fixtures/perf/data/seeded/notes.md",
+      "line": 5,
+      "type": "github_pat_classic",
+      "type_name": "GitHub Personal Access Token (Classic)",
+      "severity": "critical",
+      "confidence": 0.99,
+      "value_preview": "ghp_****AAAA",
+      "span": {
+        "start": 185,
+        "end": 225
+      }
+    },
+    {
+      "file": "tests/fixtures/perf/data/seeded/service.json",
+      "line": 4,
+      "type": "slack_bot_token",
+      "type_name": "Slack Bot Token",
+      "severity": "critical",
+      "confidence": 0.99,
+      "value_preview": "xoxb****UvWx",
+      "span": {
+        "start": 122,
+        "end": 173
+      }
+    }
+  ],
+  "summary": {
+    "scanned_files": 39,
+    "total_findings": 6,
+    "files_with_findings": 6,
+    "by_severity": {
+      "critical": 2,
+      "high": 4,
+      "medium": 0,
+      "low": 0
+    }
+  },
+  "exit_code": 2,
+  "timing": {
+    "cfsniff_version": "0.1.4",
+    "sdk_version": "0.1.3",
+    "base_url": "https://api.classifinder.ai",
+    "workers": 8,
+    "wall_time_seconds": 3.2639481670048553,
+    "file_count": 39,
+    "p50_per_file_ms": 490.13354201451875,
+    "p95_per_file_ms": 1204.7386453050422,
+    "rate_limited_files": 0,
+    "retries_exhausted": []
+  }
+}
