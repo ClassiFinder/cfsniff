@@ -37,6 +37,15 @@ _DEFAULT_MAX_FILE_SIZE = 1024 * 1024  # 1 MB
 _DEFAULT_BASE_URL = "https://api.classifinder.ai"
 
 
+def _default_base_url() -> str:
+    """Base URL to report when the client doesn't expose one.
+
+    Mirrors the SDK's resolution (CLASSIFINDER_BASE_URL, else the hosted API)
+    so timing/report output doesn't claim the hosted URL for a self-hosted run.
+    """
+    return (os.environ.get("CLASSIFINDER_BASE_URL") or _DEFAULT_BASE_URL).rstrip("/")
+
+
 def _sdk_version() -> str:
     """Best-effort SDK version detection. Returns 'unknown' if not installed via pip."""
     try:
@@ -484,7 +493,7 @@ def scan(
                     per_file_timings,
                     wall_time_seconds=wall_time,
                     workers=workers,
-                    base_url=getattr(client, "_base_url", _DEFAULT_BASE_URL),
+                    base_url=getattr(client, "_base_url", None) or _default_base_url(),
                 )
 
             # Filter and output
@@ -598,7 +607,7 @@ def audit(
                     local_pattern_ids,
                 )
 
-                base_url = getattr(client, "_base_url", _DEFAULT_BASE_URL)
+                base_url = getattr(client, "_base_url", None) or _default_base_url()
                 server_types = get_or_fetch_server_types(
                     client,
                     api_base_url=base_url,
@@ -682,7 +691,7 @@ def audit(
                     per_file_timings,
                     wall_time_seconds=wall_time,
                     workers=workers,
-                    base_url=getattr(client, "_base_url", _DEFAULT_BASE_URL),
+                    base_url=getattr(client, "_base_url", None) or _default_base_url(),
                 )
 
             all_file_findings = _filter_severity(all_file_findings, min_severity)

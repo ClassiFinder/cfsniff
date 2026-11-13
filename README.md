@@ -94,6 +94,19 @@ Set it via environment variable:
 export CLASSIFINDER_API_KEY=cf_live_...
 ```
 
+## Self-Hosted Server
+
+Want your shell history and configs to never leave your machine or network? Run the open-source scanner yourself ([classifinder.ai/self-host](https://classifinder.ai/self-host)) and point cfsniff at it with `CLASSIFINDER_BASE_URL`. Use one of the keys from the server's `CLASSIFINDER_API_KEYS`:
+
+```bash
+docker run -d -p 8000:8000 -e CLASSIFINDER_API_KEYS=change-me ghcr.io/classifinder/classifinder:latest
+export CLASSIFINDER_BASE_URL=http://localhost:8000
+export CLASSIFINDER_API_KEY=change-me
+cfsniff audit
+```
+
+Leave `CLASSIFINDER_BASE_URL` unset to use the hosted API. `--timing` output shows which server was used.
+
 ## Verifying This Build
 
 Every release is published via [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/) with [PEP 740 build attestations](https://docs.pypi.org/attestations/). No long-lived API tokens. The wheel you `pip install` is byte-identical to what GitHub Actions built from a tagged commit.
