@@ -186,3 +186,64 @@ class TestTimingFlag:
             data = json.loads(result.stdout)
             assert data["timing"]["rate_limited_files"] == 1
             assert len(data["timing"]["retries_exhausted"]) == 1
+
+
+class TestTimingBaseUrl:
+    """Timing output must name the server actually used (self-host support)."""
+
+    def _run_json(self, runner: CliRunner, tmp_path: Path) -> dict:
+        f = tmp_path / "test.env"
+        f.write_text("HARMLESS=1\n")
+        result = runner.invoke(
+            main,
+            [
+                "--api-key", "ss_test_key123456789012345678901234567890123",
+                "--format", "json",
+                "--timing",
+                str(f),
+            ],
+        )
+        assert result.exit_code == 0
+        return json.loads(result.stdout)["timing"]
+
+    def test_fallback_reflects_env_var(
+        self,
+        runner: CliRunner,
+        mock_clean_client: MagicMock,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("CLASSIFINDER_BASE_URL", "http://localhost:8000/")
+        mock_clean_client._base_url = None  # client exposes no base URL
+        assert self._run_json(runner, tmp_path)["base_url"] == "http://localhost:8000"
+
+    def test_fallback_defaults_to_hosted(
+        self,
+        runner: CliRunner,
+        mock_clean_client: MagicMock,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.delenv("CLASSIFINDER_BASE_URL", raising=False)
+        mock_clean_client._base_url = None
+        assert self._run_json(runner, tmp_path)["base_url"] == "https://api.classifinder.ai"
+
+    def test_client_base_url_wins(
+        self,
+        runner: CliRunner,
+        mock_clean_client: MagicMock,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("CLASSIFINDER_BASE_URL", "http://localhost:8000")
+        mock_clean_client._base_url = "http://scanner.internal:8000"
+        assert self._run_json(runner, tmp_path)["base_url"] == "http://scanner.internal:8000"
+
+
+def test_sdk_client_reads_base_url_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The pinned SDK (>=0.1.10) resolves CLASSIFINDER_BASE_URL itself."""
+    from classifinder import ClassiFinder
+
+    monkeypatch.setenv("CLASSIFINDER_BASE_URL", "http://localhost:8000")
+    with ClassiFinder(api_key="ss_test_key123456789012345678901234567890123") as client:
+        assert client._base_url == "http://localhost:8000"
